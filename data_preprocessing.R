@@ -31,7 +31,6 @@ zonesDT_soil[,count(empo_3), by=ClimateZ][order(freq)]
 zonesDT_soil[ClimateZ=="BWh"| ClimateZ=="BSh" | ClimateZ=="Cwb", .(X.SampleID)]
 
 # dropping climate zones with less than 3 representing samples
-zonesDT_soil[ClimateZ!="BWh"& ClimateZ!="BSh" & ClimateZ!="Cwb", .(X.SampleID)]
 zonesDT_soil <- zonesDT_soil[ClimateZ!="BWh"& ClimateZ!="BSh" & ClimateZ!="Cwb"]
 
 # filter on type of sample
@@ -62,6 +61,9 @@ zonesDT_soil[observations_deblur_100bp!=0,.(sum=sum(observations_deblur_100bp)),
 zonesDT_soil[observations_deblur_150bp!=0,.(sum=sum(observations_deblur_150bp)), 
              by=ClimateZ][order(sum)]
 
+# write filtered data.table to file
+fwrite(zonesDT_soil, file = "Kgc_soil_filtered.tsv", sep = "\t")
+
 # looking at ESVs in the biom file
 # reading EMP data (https://github.com/biocore/emp/tree/master/data/biom-tables)
 biom2 <- read.biom("emp_deblur_90bp.subset_2k.biom")
@@ -91,10 +93,7 @@ DTbiom[, sum(DTbiom$"1883.2008.269.Crump.Artic.LTREB.main.lane2.NoIndex")]
 
 # now for every sample in the subset biom data.table
 # Apply sum function to every column of subset_DTbiom
-for (i in colnames(subset_DTbiom)){
-  print(sum(subset_DTbiom[[i]]))
-}
-# storing these results in a data.frame to check it
+
 # create empty data.frame
 df_sum <- data.frame(X.SampleID = character(), ESV_sum = numeric())
 
@@ -121,8 +120,6 @@ combi <- merge(zonesDT_soil, df_sum_ordered, by="X.SampleID")
 # looking at the amount of ESV's per climate zone
 combi[,.(sum=sum(ESV_sum)), by=ClimateZ][order(sum)]
 
-zonesDT_soil[ClimateZ=="Aw"| ClimateZ=="Csa", .(X.SampleID)]
-
 # which ESV's are not present in any sample
 # taking a look at the samples
 subset_DTbiom$"808.FL.3.16a.s.4.1.sequences"
@@ -132,21 +129,39 @@ zero_rows <- subset_DTbiom[rowSums(subset_DTbiom) == 0]
 
 # print result
 print(zero_rows)
-# according to this, there are 249947 rows where rowsum = 0
+# according to this, there are 251468 rows where rowSum = 0
 
 # add column indicating whether each row has sum equal to 0
 subset_DTbiom[, has_zero_sum := rowSums(subset_DTbiom) == 0]
 
 str(subset_DTbiom)
 
+# adding back the taxa sequence 
+subset_DTbiom <- data.table(DTbiom$rn, subset_DTbiom)
+
 # select rows with sum not equal to 0
 no_zero_rows <- subset_DTbiom[has_zero_sum==FALSE]
-
-# print result
-print(no_zero_rows)
 
 # other option of filtering ESV's
 # relative abundances (threshold : >0.001%) + presenting in more than 10% of samples
 # calculating relative abundances
-# trying out for first sample:
 
+# calculate column sums
+col_sums_except_first <- colSums(subset_DTbiom[, -1, with = FALSE])
+
+# calculate proportions and scaling factor
+prop <- subset_DTbiom[, -1]/ col_sums_except_first
+scaling_factor <- 100
+
+# calculate relative abundances
+rel_abundances <- prop * scaling_factor
+
+# adding back the taxa sequence
+rel_abundances <- data.table(subset_DTbiom$V1, rel_abundances)
+
+# filtering out rows
+# 10% samples: >= 13 samples need to have rel_abundance >0.001 
+filter_rows <- rel_abundances[rowSums(rel_abundances >= 0.001) >= 13]
+
+# write to file
+fwrite(filter_rows, file = "Rel_abundance_BIOM_filtered.tsv", sep = "\t")
