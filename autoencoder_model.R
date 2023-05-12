@@ -1,106 +1,91 @@
-# first autoencoder model
+# second autoencoder model
 # loading packages
+library(tensorflow)
 use_virtualenv("r-reticulate")
 library(tensorflow)
 library(keras)
 library(data.table)
-library(dplyr)
 library(caret)
+library(tfruns)
+
+# files and variables ---------------------------------------------------------#
+ESV_ab_count <- "training/abundance-table.Soil (non-saline).txt"
 
 # reading in data -------------------------------------------------------------#
-ab_count <- fread("abundance-table.Soil (non-saline).txt")
-sample_metadata <- fread("sample-metadata.Soil (non-saline).txt")
+# absolute abundance
+Obs_A <- fread(ESV_ab_count)
 
-
-# transpose and merge data ----------------------------------------------------#
-ab_count_t <- as.data.frame(t(ab_count))
-colnames(ab_count_t) <- ab_count_t[1,]
-ab_count_t <- ab_count_t[-1,]
-
-
-# OneHot encoding format for climatezones--------------------------------------#
-subset_metadata <- sample_metadata[, .(SampleIDabv, ClimateZ)]
-levels(subset_metadata$SampleIDabv) <- as.list(unique(subset_metadata$SampleIDabv))
-levels(subset_metadata$ClimateZ) <- as.list(unique(subset_metadata$ClimateZ))
-target <- model.matrix(~ClimateZ, subset_metadata)
-target <- target[,-1]
-
-
-
-# splitting data --------------------------------------------------------------#
-# features and target
-x <- as.matrix(ab_count_t)  
-y <- target 
+# relative abundance
+Obs_R <- apply(Obs_A[,-1], 2, function(x) {
+  
+  return(x/ sum(x))
+  
+})
+Taxa_labels <- Obs_A[,1]
+Obs1 <- as.matrix(Obs_A[,-1])
 
 # converting integers and characters to float
-x <- apply(x, MARGIN=c(1,2), FUN=as.numeric)
-x <- x/1.0
-y <- y/1.0
-
-# merged version cuz why not
-dataset <- cbind(x, y)
-
-# Now Selecting 75% of data as train data  
-#dataset$id <- 1:nrow(dataset)
-#train <- dataset %>% dplyr::sample_frac(.75)
-#test  <- dplyr::anti_join(datase, train, by = 'id')
-
-
-# converting text to integers ----------(under construction)-------------------#
-# Vocabulary size and number of words in a sequence.
-#vocab_size = 30
-
-# Use the text vectorization layer to normalize, split, and map strings to
-# integers. Note that the layer uses the custom standardization defined above.
-# Set maximum_sequence length as all samples are not of the same length.
-#vectorize_layer = tf$keras$layers$TextVectorization(
-#  max_tokens=vocab_size,
-#  output_mode='int')
-
-# Make a text-only dataset (without labels), then call adapt
-#target_text <- subset_metadata 
-#vectorize_layer %>% adapt(target_text)
-
+Obs1 <- apply(Obs1, MARGIN=c(1,2), FUN=as.numeric)
 
 # -----------------------------------------------------------------------------#
 # internal validation (splitting up training set)
 # Set the proportion of the validation set
 validation_prop <- 0.2
 # Get the number of rows in the data
-n <- nrow(x)
+n <- nrow(Obs_R)
 # Create a vector of indices
 indices <- 1:n
 # Use createDataPartition to split the indices into a training and validation set
 set.seed(123) # set seed for reproducibility
 
-validation_indices <- createDataPartition(x, times = 1, p = validation_prop, list = FALSE)
+validation_indices <- createDataPartition(Obs_R, times = 1, p = validation_prop, list = FALSE)
 training_indices <- setdiff(indices, validation_indices)
 
 # Create the training and validation sets from the indices
-x_train <- x[training_indices, ]
-y_train <- y[training_indices,]
-x_val <- x[-training_indices, ]
-y_val <- y[-training_indices,]
+x_train <- Obs_R[training_indices, ]
+x_test <- Obs_R[-training_indices, ]
 
-# building model (with climatezones) ------ did not work ----------------------#
-model <- keras_model_sequential() %>%
-  layer_flatten(input_shape = c(1635)) %>%
-  layer_dense(128, activation = "relu") %>%
-  layer_dropout(0.2) %>%
-  layer_dense(14)
+# building model --------------------------------------------------------------#
 
-# compiling model
-model %>% compile(
-  optimizer = 'adam',
-  loss = 'categorical_crossentropy',
-  metrics = c('accuracy')
+# Define the input shape of your data
+input_shape <- dim(Obs_R)[2]
+
+# setting flags for hyperparameter tuning
+FLAGS <- flags(
+  flag_numeric("dropout1", 0.5),
+  flag_numeric("dropout2", 0.4),
+  flag_integer("units1", 256)
 )
 
-# training model
-epochs <- 5
-history <- model %>% fit(
-  x_train, y_train,
-  validation_data = list(x_val, y_val),
-  epochs = epochs
-)
+# Define the encoder part of your autoencoder using a Sequential model
+encoder <- keras_model_sequential() %>%
+  layer_dense(units = 64, activation = "relu", input_shape = input_shape) %>%
+  layer_dropout(rate = FLAGS$dropout1) %>%
+  layer_dense(units = 64, activation = "relu") %>%
+  layer_dropout(rate = FLAGS$dropout1) %>%
+  layer_dense(units = 32, activation = "relu") %>%
+  layer_dropout(rate = FLAGS$dropout2) %>%
+  layer_dense(units = 16, activation = "relu") 
 
+# Define the decoder part of your autoencoder using a Sequential model
+decoder <- keras_model_sequential() %>%
+  layer_dense(units = 32, activation = "relu", input_shape = c(16)) %>%
+  layer_dense(units = 64, activation = "relu") %>%
+  layer_dense(units = 125, activation = "sigmoid")
+
+# Combine the encoder and decoder models into an autoencoder model
+autoencoder <- keras_model_sequential() %>%
+  encoder %>%
+  decoder
+
+# Compile the autoencoder model
+autoencoder %>% compile(optimizer = "adam", 
+                        loss = "binary_crossentropy",
+                        metrics = c('accuracy'))
+
+# Train the autoencoder model on your data
+autoencoder %>% fit(x_train, x_train, epochs = 20, batch_size = 32)
+autoencoder %>% evaluate(x_test,  x_test, verbose = 2)
+
+# Use the encoder part of the model to create the latent space representation of your data
+latent_space <- encoder %>% predict(Obs1)
