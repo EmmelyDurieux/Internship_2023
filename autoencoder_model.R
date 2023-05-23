@@ -89,8 +89,16 @@ autoencoder %>% compile(optimizer = optimizer,
                         metrics = c('accuracy', 'mse'))
 
 # Train the autoencoder model on your data
-#autoencoder %>% fit(x_train, x_train, epochs = 100, batch_size = 32)
-autoencoder %>% fit(resampled_data, resampled_data, epochs = FLAGS$epoch1, batch_size = 32)
+num_train_iterations <- 5
+
+for (i in 1:num_train_iterations) {
+  # Train the model
+  history <- autoencoder %>% fit(resampled_data, resampled_data, epochs = FLAGS$epoch1, batch_size = 32)
+  
+  # Optional: Print training progress or other information
+  print(paste("Training iteration", i))
+  print(history)
+}
 
 # evaluate the model on test data and train data
 autoencoder %>% evaluate(x_test,  x_test, verbose = 2)
