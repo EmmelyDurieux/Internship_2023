@@ -41,20 +41,19 @@ for (level in target_levels) {
   
   # Store the model in the list
   rf_models[[level]] <- model
+  
 }
 
-# Function to predict the class for a single observation using the models
+# Predict the class for a single observation using rf_models
 predict_class <- function(observation) {
-  # Initialize a vector to store the class probabilities
   class_probs <- rep(0, length(target_levels))
   
   # Iterate over each class
   for (i in 1:length(target_levels)) {
-    # Get the model for the current class
+
     model <- rf_models[[target_levels[i]]]
-    
-    # Predict the probability for the current class
-    class_probs[i] <- predict(model, newdata = observation, type = "prob")[2]
+  
+    class_probs[i] <- predict(model, newdata = observation, type = "prob")[,1]
   }
   
   # Determine the class with the highest probability
@@ -66,8 +65,6 @@ predict_class <- function(observation) {
 # Predict the classes for the test data
 predictions <- apply(test_data[, -9], 1, predict_class)
 
-# getting the most informative variable for each class
-importance(rf_models$Af)
 
 # hyperparameter tuning ------------under construction-------------------------#
 
@@ -92,25 +89,26 @@ for (level in target_levels) {
   tuning_grid <- data.frame(mtry = hyperparameters$mtry)
   
   # Train the random forest model with hyperparameter tuning for the current class
-  model <- train(x = train_data[, -9], y = binary_target, method = "rf",
-                 tuneGrid = tuning_grid, trControl = trainControl(method = "cv", number = 5))
+  model <- train(
+    x = train_data[, -9], y = binary_target, method = "rf",
+    tuneGrid = tuning_grid
+  )
   
   # Store the best model in the list
   rf_models[[level]] <- model$finalModel
+
 }
 
 # Function to predict the class for a single observation using the models
 predict_class <- function(observation) {
-  # Initialize a vector to store the class probabilities
   class_probs <- rep(0, length(target_levels))
   
   # Iterate over each class
   for (i in 1:length(target_levels)) {
-    # Get the model for the current class
+
     model <- rf_models[[target_levels[i]]]
     
-    # Predict the probability for the current class
-    class_probs[i] <- predict(model, newdata = observation, type = "prob")[2]
+    class_probs[i] <- predict(model, newdata = observation, type = "prob")[,1]
   }
   
   # Determine the class with the highest probability
@@ -121,4 +119,28 @@ predict_class <- function(observation) {
 
 # Predict the classes for the test data
 predictions <- apply(test_data[, -9], 1, predict_class)
+
+# Calculate the accuracy
+accuracy <- mean(predictions == test_data$target)
+
+
+# getting the most informative variable for each class ------------------------#
+key_variable_df <- data.frame(Class = character(), Key_Variable = character(), 
+                              stringsAsFactors = FALSE)
+
+# Iterate over each class and get variable with max mdg 
+for (level in target_levels) {
+
+  model <- rf_models[[level]]
+  
+  mdg <- model$importance[, "MeanDecreaseGini"]
+  
+  max_index <- which.max(mdg)
+  
+  key_variable <- colnames(train_data[, -9])[max_index]
+  key_variable_df <- rbind(key_variable_df, data.frame(Class = level, Key_Variable = key_variable, stringsAsFactors = FALSE))
+}
+
+# Print the dataframe with the key features for each class
+print(key_variable_df)
 
