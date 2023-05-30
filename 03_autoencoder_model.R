@@ -9,6 +9,7 @@ library(tfruns)
 
 # files and variables ---------------------------------------------------------#
 ESV_rel_count <- "rel-abundance-table_10k.Soil (non-saline).txt"
+taxon <- "taxonomy-table_10k.Soil (non-saline).txt"
 train_set <- "train_10k.txt"
 test_set <- "test_10k.txt"
 
@@ -47,11 +48,11 @@ FLAGS <- flags(
   flag_numeric("learning1", 0.005),
   flag_numeric("weight1", 0.001),
   flag_integer("units1", 512),
-  flag_integer("units2", 128),
-  flag_integer("units3", 64),
-  flag_integer("units4", 32),
-  flag_integer("units5", 16),
-  flag_integer("latent", 8),
+  flag_integer("units2", 256),
+  flag_integer("units3", 128),
+  flag_integer("units4", 64),
+  flag_integer("units5", 32),
+  flag_integer("latent", 16),
   flag_integer("epoch1", 100),
   flag_string("activation1", "relu"),
   flag_string("activation2", "softmax")
@@ -90,7 +91,7 @@ autoencoder %>% compile(optimizer = optimizer,
                         metrics = c('accuracy', 'mse'))
 
 # Train the autoencoder model on your data
-num_train_iterations <- 6
+num_train_iterations <- 5
 
 for (i in 1:num_train_iterations) {
   # Train the model
@@ -109,7 +110,7 @@ autoencoder %>% evaluate(Obs2t, Obs2t, verbose = 2)
 # Use the encoder part of the model to create the latent space representation of your data
 latent_space <- encoder %>% predict(Obs2t)
 
-# set as data.table and writ to file
+# set as data.table and write to file
 latent_space_DT <- as.data.frame(latent_space)
 latent_space_DT <- setDT(latent_space_DT)
 fwrite(
@@ -119,50 +120,19 @@ fwrite(
 
 # Identify original taxa of latent variables-----------------------------------#
 
-# -------------------------- ATTEMP 1 -----------------------------------------#
-# Get the weights of the encoder model
-encoder_weights <- encoder$get_weights()
-
-# Extract the weights for the latent space layer
-latent_weights <- encoder_weights[[11]]
-
-# Analyze the weights for each latent space variable
-num_latent_variables <- dim(latent_weights)[2]  # Get the number of latent space variables
-num_features <- dim(latent_weights)[1]  # Get the number of features
-
-latent_variable_list <- list()
-
-for (latent_index in 1:num_latent_variables) {
-  feature_weights <- latent_weights[, latent_index]
-  sorted_features <- order(feature_weights, decreasing = TRUE)
-  
-  feature_list <- list()
-  for (feature_index in 1:num_features) {
-    feature_weight <- feature_weights[sorted_features[feature_index]]
-    if (feature_weight != 0) {
-      feature_list[[as.character(sorted_features[feature_index])]] <- feature_weight
-    }
-  }
-  
-  latent_variable_list[[paste0("Latent variable", latent_index)]] <- feature_list
-}
-
-# Print the latent variable list
-str(latent_variable_list)
-
-# -------------------------- ATTEMP 2 -----------------------------------------#
 # Get the weights of the encoder model
 encoder_weights <- encoder$get_weights()
 
 # Calculate the number of encoder layers
 num_encoder_layers <- length(encoder_weights)
 
-# Create a list to store the feature weights
-feature_weights_list <- list()
+# Loop through the encoder layers in reverse order
+num_features <- dim(encoder_weights[[1]])[1]
+
+# Create a data.table to store the feature weights
+feature_weights_dt <- data.table(latent_variable = character(), layer_index = integer(), feature_index = integer(), weight = numeric())
 
 # Loop through the encoder layers in reverse order
-num_features <- dim(encoder_weights[[1]])[1]  # Get the number of features
-
 for (layer_index in seq(num_encoder_layers, 1, -1)) {
   layer_weights <- encoder_weights[[layer_index]]  # Weights of the current layer
   
@@ -178,73 +148,90 @@ for (layer_index in seq(num_encoder_layers, 1, -1)) {
       feature_weights <- layer_weights[, latent_index]
       sorted_features <- order(feature_weights, decreasing = TRUE)
       
-      latent_variable_name <- paste0("Latent variable", latent_index, " in Layer", layer_index)
-      feature_weights_list[[latent_variable_name]] <- setNames(feature_weights[sorted_features], sorted_features)
+      latent_variable_name <- latent_index
+      
+      # Create a data.table with the feature weights and append it to feature_weights_dt
+      feature_weights_dt_temp <- data.table(latent_variable = latent_variable_name,
+                                            layer_index = layer_index,
+                                            feature_index = sorted_features,
+                                            weight = feature_weights[sorted_features])
+      
+      feature_weights_dt <- rbindlist(list(feature_weights_dt, feature_weights_dt_temp))
     }
   } else {
     cat("Skipping Layer", layer_index, "as it has no valid weights\n\n")
   }
 }
 
-str(feature_weights_list)
+# Print the resulting data.table
+print(feature_weights_dt)
 
-# selecting the variables with highest weight
-highest_weight_features <- list()
+# Select the variables with the highest weight for each latent variable and layer
+highest_weight_features_dt <- feature_weights_dt[, .SD[which.max(weight)], by = .(latent_variable, layer_index)]
+highest_weight_features_dt$latent_variable <- as.integer(highest_weight_features_dt$latent_variable)
 
-for (latent_variable_name in names(feature_weights_list)) {
-  feature_weights <- feature_weights_list[[latent_variable_name]]
-  highest_weight_feature <- names(feature_weights)[which.max(feature_weights)]
-  
-  highest_weight_features[[latent_variable_name]] <- highest_weight_feature
-}
+# Print the resulting data.table
+print(highest_weight_features_dt)
 
-# Print the input feature with the highest weight for each latent variable
-for (latent_variable_name in names(highest_weight_features)) {
-  cat(latent_variable_name, ":\n")
-  cat("Input variable with the highest weight:", highest_weight_features[[latent_variable_name]], "\n")
-  cat("\n")
-}
+# Create a separate data table for each layer
+layer11 <- highest_weight_features_dt[layer_index=="11", .(latent_variable, feature_index) ]
+layer9 <- highest_weight_features_dt[layer_index=="9", .(latent_variable, feature_index) ]
+layer7 <- highest_weight_features_dt[layer_index=="7", .(latent_variable, feature_index) ]
+layer5 <- highest_weight_features_dt[layer_index=="5", .(latent_variable, feature_index) ]
+layer3 <- highest_weight_features_dt[layer_index=="3", .(latent_variable, feature_index) ]
+
+# Merge the data tables based on latent variables
+merged_dt <- merge(layer11, layer9, by.x = "feature_index", by.y = "latent_variable")
+merged_dt <- merged_dt[, .(latent_variable, "layer11"=feature_index, "layer9" = feature_index.y )][order(latent_variable)]
+
+merged_dt <- merge(merged_dt, layer7, by.x = "layer9", by.y = "latent_variable")
+merged_dt <- merged_dt[, .(latent_variable, `layer11`, layer9, "layer7"=feature_index )][order(latent_variable)]
+
+merged_dt <- merge(merged_dt, layer5, by.x = "layer7", by.y = "latent_variable")
+merged_dt <- merged_dt[, .(latent_variable, `layer11`, layer9, layer7, "layer5"=feature_index )][order(latent_variable)]
+
+merged_dt <- merge(merged_dt, layer3, by.x = "layer5", by.y = "latent_variable")
+merged_dt <- merged_dt[, .(latent_variable, `layer11`, layer9, layer7, layer5, "layer3"=feature_index )][order(latent_variable)]
+merged_dt$layer3 <- paste0("V", merged_dt$layer3)
+
+# extracting the taxa from input layer -----------(fail)-----------------------------#
+input_weight <- as.data.frame(encoder_weights[[1]])
+
+highest_column <- as.data.frame(apply(input_weight, 1, function(x) which.max(x)))
+highest_column$taxa <- seq_len(nrow(highest_column))
+highest_column$taxa <- paste0("Taxa", highest_column$taxa)
+
+# merge taxa with corresponding variables
+merged_dt <- merge(merged_dt, highest_column, by.x = "layer3", by.y = "apply(input_weight, 1, function(x) which.max(x))")
+merged_dt <- merged_dt[, .(latent_variable, layer3, "Taxa"=taxa )][order(latent_variable)]
+
+# extracting the taxa from input layer ---------------------------------------------#
+input_weight <- as.data.frame(encoder_weights[[1]])
+
+# restrict to only variables from latent space
+selected_columns <- unique(merged_dt$layer3)
+result <- input_weight[, selected_columns, drop = FALSE]
+
+# max weight for each column
+max_values <- apply(result, 2, function(x) {
+  max_value <- max(x)
+  max_row_index <- which(x == max_value)
+  data.frame(max_value = max_value, Taxa = paste0("Taxa", max_row_index))
+})
+
+result <- do.call(rbind, max_values)
+result <- rownames_to_column(result, var = "row_names")
+
+# getting the full taxonomy from taxonomy table
+taxonomy <- fread(taxon)
+
+result <- merge(result, taxonomy, by.x = "Taxa", by.y = "TaxaIDabv")
+final <- merge(result, merged_dt, by.x = "row_names", by.y = "layer3")
+final <- final[, .(latent_variable, Taxa, TaxaID, Kingdom, Phylum, Class, Order, Family, Genus, Species)][order(latent_variable)]
 
 
-# Trace back to the original 8 latent variables in layer 11 (doesn't work yet)
-original_latent_variables <- highest_weight_features[grepl("Latent variable\\d+ in Layer11", names(highest_weight_features))]
-latent_variable_names <- names(highest_weight_features)[grepl(paste0("Latent variable\\d+ in Layer", prev_layer_index), names(highest_weight_features))]
-
-latent_variable_names <- character()
-for (index in prev_layer_index) {
-  pattern <- paste0("Latent variable\\d+ in Layer", index)
-  matching_names <- names(highest_weight_features)[sapply(names(highest_weight_features), function(x) grepl(pattern, x))]
-  latent_variable_names <- c(latent_variable_names, matching_names)
-}
-
-while (length(latent_variable_names) > 0) {
-  prev_layer_index <- as.integer(gsub(".*Layer(\\d+)", "\\1", latent_variable_names))
-  prev_latent_variables <- character()
-  
-  for (index in prev_layer_index) {
-    pattern <- paste0("Latent variable\\d+ in Layer", index)
-    matching_names <- names(highest_weight_features)[grepl(pattern, names(highest_weight_features))]
-    prev_latent_variables <- c(prev_latent_variables, matching_names)
-  }
-  
-  if (length(prev_latent_variables) == 0) {
-    break
-  }
-  
-  original_latent_variables <- c(prev_latent_variables, original_latent_variables)
-  latent_variable_names <- prev_latent_variables
-}
-
-# Print the input features with the highest weights from the original latent variables
-for (latent_variable_name in names(original_latent_variables)) {
-  feature_index <- original_latent_variables[[latent_variable_name]]
-  cat(latent_variable_name, ":\n")
-  cat("Input feature with the highest weight:", feature_index, "\n")
-  cat("\n")
-}
-
-# -----------------------------------------------------------------------------#
-
-
-
-
+# write to file
+fwrite(
+  final, "taxa-latent-variable.txt",
+  row.names = FALSE, quote = FALSE, sep = "\t"
+)
