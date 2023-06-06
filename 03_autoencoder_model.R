@@ -43,16 +43,11 @@ input_shape <- dim(Obs2t)[2]
 
 # setting flags for hyperparameter tuning
 FLAGS <- flags(
-  flag_numeric("dropout1", 0.4),
-  flag_numeric("dropout2", 0.3),
   flag_numeric("learning1", 0.005),
   flag_numeric("weight1", 0.001),
-  flag_integer("units1", 512),
-  flag_integer("units2", 256),
-  flag_integer("units3", 128),
-  flag_integer("units4", 64),
-  flag_integer("units5", 32),
-  flag_integer("latent", 16),
+  flag_integer("units1", 256),
+  flag_integer("units2", 64),
+  flag_integer("latent", 32),
   flag_integer("epoch1", 100),
   flag_string("activation1", "relu"),
   flag_string("activation2", "softmax")
@@ -62,17 +57,11 @@ FLAGS <- flags(
 encoder <- keras_model_sequential() %>%
   layer_dense(units = FLAGS$units1, activation = FLAGS$activation1, input_shape = input_shape) %>%
   layer_dense(units = FLAGS$units2, activation = FLAGS$activation1) %>%
-  layer_dense(units = FLAGS$units3, activation = FLAGS$activation1) %>%
-  layer_dense(units = FLAGS$units4, activation = FLAGS$activation1) %>%
-  layer_dense(units = FLAGS$units5, activation = FLAGS$activation1) %>%
   layer_dense(units = FLAGS$latent, activation = FLAGS$activation1)
 
 # Define the decoder part of your autoencoder using a Sequential model
 decoder <- keras_model_sequential() %>%
-  layer_dense(units = FLAGS$units5, activation = FLAGS$activation1, input_shape = c(FLAGS$latent))%>%
-  layer_dense(units = FLAGS$units4, activation = FLAGS$activation1) %>%
-  layer_dense(units = FLAGS$units3, activation = FLAGS$activation1) %>%
-  layer_dense(units = FLAGS$units2, activation = FLAGS$activation1) %>%
+  layer_dense(units = FLAGS$units2, activation = FLAGS$activation1, input_shape = c(FLAGS$latent))%>%
   layer_dense(units = FLAGS$units1, activation = FLAGS$activation1) %>%
   layer_dense(units = input_shape, activation = FLAGS$activation2)
 
@@ -109,14 +98,12 @@ autoencoder %>% evaluate(Obs2t, Obs2t, verbose = 2)
 
 # Use the encoder part of the model to create the latent space representation of your data
 latent_space <- encoder %>% predict(Obs2t)
-reshaped_latent <- array_reshape(latent_space, c(1, FLAGS$latent))
-reconstructed_output <- predict(decoder, latent_space)
 
 # set as data.table and write to file
 latent_space_DT <- as.data.frame(latent_space)
 latent_space_DT <- setDT(latent_space_DT)
 fwrite(
-  latent_space_DT, "latent-space_10k.txt",
+  latent_space_DT, "latent-space_10k-1layer.txt",
   row.names = FALSE, quote = FALSE, sep = "\t"
 )
 
@@ -190,66 +177,22 @@ merged_dt <- merged_dt[order(-weight)]
 top5_variables <- merged_dt[, .SD[1:5], by = latent_variable]
 merged_dt <- top5_variables[, .(latent_variable, layer1, layer3, "layer5" = feature_index)][order(latent_variable)]
 
-# third + fourth layer
-merged_dt <- merge(merged_dt, layer7, by.x = "layer5", by.y = "latent_variable", allow.cartesian = TRUE)
-merged_dt <- merged_dt[order(-weight)]
-top5_variables <- merged_dt[, .SD[1:5], by = latent_variable]
-merged_dt <- top5_variables[, .(latent_variable, layer1, layer3, layer5, "layer7" = feature_index)][order(latent_variable)]
-
-# fourth + fifth layer
-merged_dt <- merge(merged_dt, layer9, by.x = "layer7", by.y = "latent_variable", allow.cartesian = TRUE)
-merged_dt <- merged_dt[order(-weight)]
-top5_variables <- merged_dt[, .SD[1:5], by = latent_variable]
-merged_dt <- top5_variables[, .(latent_variable, layer1, layer3, layer5, layer7, "layer9" = feature_index)][order(latent_variable)]
-
-# fifth + sixth layer
-merged_dt <- merge(merged_dt, layer11, by.x = "layer9", by.y = "latent_variable", allow.cartesian = TRUE)
-merged_dt <- merged_dt[order(-weight)]
-top5_variables <- merged_dt[, .SD[1:5], by = latent_variable]
-merged_dt <- top5_variables[, .(latent_variable, layer1, layer3, layer5, layer7, layer9, 
-                                "taxa" = feature_index)][order(latent_variable)]
-
-
-# ---------------------------- (non hard coded version attempt) ---------------------------#
-
-# First + second layer
-merged_dt <- merge(layer1, layer3, by.x = "feature_index", by.y = "latent_variable", allow.cartesian = TRUE)
-merged_dt <- merged_dt[order(-weight.y)]
-top5_variables <- merged_dt[, .SD[1:5], by = latent_variable]
-merged_dt <- top5_variables[, .(latent_variable, "layer1"=feature_index, "layer3" = feature_index.y )][order(latent_variable)]
-
-# Loop through the layer indices
-for (i in 2:length(layer_indices[-1])) {
-  current_layer <- layer_indices[i]
-  prev_layer <- layer_indices[i-1]
-  
-  # Merge the current layer with the previous layer based on matching columns
-  merged_dt <- merge(merged_dt, layer_list[[current_layer]], by.x = paste0("layer", prev_layer), by.y = "latent_variable", allow.cartesian = TRUE)
-  
-  # Order the merged data.table by feature_index and weight
-  merged_dt <- merged_dt[order(-weight)]
-  
-  # Select the top 5 variables for each latent_variable
-  top5_variables <- merged_dt[, .SD[1:5], by = latent_variable, .SDcols = c("feature_index")]
-  
-  # Update the merged data.table with the selected top 5 variables
-  merged_dt <- top5_variables[, .(latent_variable, taxa = feature_index), by = eval(paste0("layer", current_layer))][order(latent_variable)]
-  
-  # Rename the columns
-  colnames(merged_dt)[match(paste0("layer", current_layer), colnames(merged_dt))] <- paste0("layer", current_layer)
-}
-
-# Remove unnecessary columns from the merged data.table
-merged_dt[, c("feature_index") := NULL]
-
-
-
 # extracting the taxa from input layer ---------------------------------------------#
 taxonomy <- fread(taxon)
 
-result <- merge(merged_dt, taxonomy, by.x = "taxa", by.y = "TaxaIDabv")
-final <- result[, .(latent_variable, Taxa, TaxaID, Kingdom, Phylum, Class, Order, Family, Genus, Species)][order(latent_variable)]
+# matching up input variables and TaxaIDabv in taxonomy table
+merged_dt$layer5_numeric <- as.numeric(substr(merged_dt$layer5, 2, nchar(merged_dt$layer5)))
+taxonomy$taxa_numeric <- as.numeric(substr(taxonomy$TaxaIDabv, 5, nchar(taxonomy$TaxaIDabv)))
+result <- merge(merged_dt, taxonomy, by.x = "layer5_numeric", by.y = "taxa_numeric", all.x = TRUE)
 
+# Remove the temporary numeric columns
+result$layer5_numeric <- NULL
+result$taxa_numeric <- NULL
+
+# Print the merged data table
+print(result)
+
+final <- result[, .(latent_variable, layer5, TaxaID, Kingdom, Phylum, Class, Order, Family, Genus, Species)][order(latent_variable)]
 
 # write to file
 fwrite(
