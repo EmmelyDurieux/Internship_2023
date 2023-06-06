@@ -5,12 +5,14 @@ library(randomForest)
 library(caret)
 
 # files and variables ---------------------------------------------------------#
-latentSpace <- "latent-space_10k.txt"
+latentSpace <- "latent-space_10k-1layer.txt"
 sample_meta <- "sample-metadata_10k.Soil (non-saline).txt"
+ls_taxa <- "taxa-latent-variable.txt"
 
 # read in files ---------------------------------------------------------------#
 ls <- fread(latentSpace)
 sam01 <- fread(sample_meta)
+taxa <- fread(ls_taxa)
 
 # random forest classifier ----------------------------------------------------#
 
@@ -37,7 +39,7 @@ for (level in target_levels) {
   binary_target <- factor(binary_target, levels = c("Yes", "No"))
   
   # Train the random forest model for the current class
-  model <- randomForest(x = train_data[, -9], y = binary_target, ntree = 100)
+  model <- randomForest(x = train_data[, -33], y = binary_target, ntree = 100)
   
   # Store the model in the list
   rf_models[[level]] <- model
@@ -63,8 +65,10 @@ predict_class <- function(observation) {
 }
 
 # Predict the classes for the test data
-predictions <- apply(test_data[, -9], 1, predict_class)
+predictions <- apply(test_data[, -33], 1, predict_class)
 
+# Calculate the accuracy
+accuracy <- mean(predictions == test_data$target)
 
 # hyperparameter tuning ------------under construction-------------------------#
 
@@ -90,7 +94,7 @@ for (level in target_levels) {
   
   # Train the random forest model with hyperparameter tuning for the current class
   model <- train(
-    x = train_data[, -9], y = binary_target, method = "rf",
+    x = train_data[, -33], y = binary_target, method = "rf",
     tuneGrid = tuning_grid
   )
   
@@ -118,14 +122,14 @@ predict_class <- function(observation) {
 }
 
 # Predict the classes for the test data
-predictions <- apply(test_data[, -9], 1, predict_class)
+predictions <- apply(test_data[, -33], 1, predict_class)
 
 # Calculate the accuracy
 accuracy <- mean(predictions == test_data$target)
 
 
 # getting the most informative variable for each class ------------------------#
-key_variable_df <- data.frame(Class = character(), Key_Variable = character(), 
+key_variable_df <- data.frame(ClimateZ = character(), Key_Variable = character(), 
                               stringsAsFactors = FALSE)
 
 # Iterate over each class and get variable with max mdg 
@@ -138,9 +142,46 @@ for (level in target_levels) {
   max_index <- which.max(mdg)
   
   key_variable <- colnames(train_data[, -9])[max_index]
-  key_variable_df <- rbind(key_variable_df, data.frame(Class = level, Key_Variable = key_variable, stringsAsFactors = FALSE))
+  key_variable_df <- rbind(key_variable_df, data.frame(ClimateZ = level, Key_Variable = key_variable, stringsAsFactors = FALSE))
 }
 
 # Print the dataframe with the key features for each class
 print(key_variable_df)
 
+
+
+# Iterate over each class and get top 2 variables with highest mdg ------------#
+
+# Create an empty data frame to store the key variables
+key_variable_df <- data.frame(ClimateZ = character(), Key_Variable = character(), stringsAsFactors = FALSE)
+
+# iterate over each class
+for (level in target_levels) {
+  
+  model <- rf_models[[level]]
+  
+  mdg <- model$importance[, "MeanDecreaseGini"]
+  
+  top_indices <- order(mdg, decreasing = TRUE)[1:2]
+  
+  # Get the variable names corresponding to the top indices
+  top_variables <- colnames(train_data[, -9])[top_indices]
+  
+  # Create a data frame with the class and the top variables
+  class_df <- data.frame(ClimateZ = level, Key_Variable = top_variables, stringsAsFactors = FALSE)
+  
+  # Append the class_df to key_variable_df
+  key_variable_df <- rbind(key_variable_df, class_df)
+}
+
+# Print the dataframe with the top 2 key features for each class
+print(key_variable_df)
+
+# assigning key taxa to climate zones based on key variable -------------------#
+res <- merge(key_variable_df, taxa, by.x = "Key_Variable", by.y = "latent_variable", all.x = TRUE)
+
+# write to file
+fwrite(
+  res, "taxa-climatezone.txt",
+  row.names = FALSE, quote = FALSE, sep = "\t"
+)
