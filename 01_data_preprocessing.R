@@ -54,7 +54,7 @@ rel_abundance_table <- ab_counts[, lapply(.SD, function(x) x/sum(x, na.rm = TRUE
                       .SDcols = colnames(ab_counts[,-1])]
 
 # adding back the taxa sequence
-rel_abundance_table <- data.table(ab_counts$TaxaIDabv, rel_abundance_table)
+rel_abundance_table <- data.table(TaxaIDabv = ab_counts$TaxaIDabv, rel_abundance_table)
 
 # removing noise (rel_abundance < 0.01)
 rel_abundance_table[rel_abundance_table < abundance_threshold] <- 0
@@ -88,11 +88,12 @@ taxonomy_table = taxonomy_table[, c(
   "Species"
 ), with = FALSE]
 
-index <- match(rel_abundance_table$TaxaIDabv, taxonomy_table$TaxaID)
+index <- match(abs_abundance_table$TaxaIDabv, taxonomy_table$TaxaID)
 
 rel_abundance_table$TaxaIDabv <- taxonomy_table[index, ]$TaxaIDabv
 
 abs_abundance_table$TaxaIDabv <- taxonomy_table[index, ]$TaxaIDabv
+
 
 taxonomy_table <- taxonomy_table[which(Kingdom == "k__Bacteria"), ]
 abundance_table <- abs_abundance_table[which(TaxaIDabv %in% taxonomy_table$TaxaIDabv), ]
@@ -104,7 +105,7 @@ rel_abundance_table <- rel_abundance_table[which(TaxaIDabv %in% taxonomy_table$T
 sam_subset = sam_subset[which(ClimateZ != "" & !is.na(ClimateZ)), ]
 
 
-index = colSums(obs0[, sam_subset$`#SampleID`, with = FALSE])
+index = colSums(rel_abundance_table[, sam_subset$`#SampleID`, with = FALSE])
 
 drop = names(which(index == 0))
 keep = names(which(index != 0))
