@@ -4,22 +4,28 @@ This repository contains the code developed during my internship in 2023 at INAB
 
 The overarching approach of the project involved the implementation of an autoencoder to reduce the dimensionality of the input features, generating a compressed representation known as the latent space. This latent space was then utilized as input for a random forest classifier, allowing the identification of significant latent variables associated with each climate zone. By examining the weights within the autoencoder, it was possible to pinpoint the most informative features contributing to the composition of the latent variable, thereby establishing a connection between these features and the respective climate zone.
 
-Every script in this workflow is written in R (version 4.3.0) and run in a Windows based system (Windows 10 Pro 22H2).
+Every script in this workflow is written in R (version 4.3.0) and run in a Windows based system (Windows 10 Pro 22H2, 64-bits).
 The scripts are numbered in order of execution, with "01" being the first. 
 
-### Necessary packages and installation guide/documentation
+### Necessary packages, used version and installation guide/documentation
+The following R packages are used in the workflow:
+- kgc (1.0.0.2)
+- data.table (1.14.8)
+- caret (6.0.94)
+- randomForest (4.7.1.1)
+- rbiom (1.0.3.9087)
+- tensorflow and keras (2.11.0)  
+
+I recommend installing rbiom, tensorflow and keras before running the scripts. 
 - rbiom: https://cmmr.github.io/rbiom/index.html 
-- kgc: install.packages("kgc")
-- data.table: install.packages("data.table")
-- caret: install.packages("caret")
 - tensorflow and keras: https://tensorflow.rstudio.com/install/index.html 
-- randomForest: install.packages("randomForest")
+note: I had some troubles installing tensorflow and keras, I put my code that fixed my problems in the unnumbered script "installation-Tensorflow-Keras.R"
 
 ## 01_data_preprocessing.R
 This script:
 - processes the BIOM files: obtains abundance counts for each taxa 
 - processes the sample metadata files: assigns climate zone to each sample
-- selects only samples that belong to "Soil (non-saline)" empo_3 onthology
+- selects only samples that belong to "Soil (non-saline)" empo_3 ontology
 - filters data on sample/climate representation and taxa prevalence
 
 Packages:
@@ -55,8 +61,7 @@ Packages:
 - tensorflow
 - keras
 
-note: I had some troubles installing tensorflow and keras, I put my code that fixed my problems in the unnumbered script "installation-Tensorflow-Keras.R",
-in the autoencoder script you will see that I load tensorflow before and after I activate and use my virualenv. This is not a mistake, if I don't do it this way my virtualenv and/or tensorflow simply don't want to work. This is not a universal problem, so when running this script on another system, it's possible that this won't be necessary. 
+note: in this script you will see that I load tensorflow before and after I activate and use my virtualenv. This is on purpose, if I don't do it this way my virtualenv and/or tensorflow simply don't want to work. This is not a universal problem, so when running this script on another system, it's possible that this won't be necessary. If there are other problems working with virtualenv it can help to restart R and clean the environment.
 
 ### output
 - latent-space.txt : latent space variable representation (32) for each sample
