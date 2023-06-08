@@ -145,14 +145,8 @@ for (layer_index in 1:num_decoder_layers) {
   }
 }
 
-# Print the resulting data.table
-print(feature_weights_dt)
-
 # Select the top 5 variables with the highest weight for each variable in each layer
 highest_weight_features_dt <- feature_weights_dt[, .SD[order(-weight)][1:5], by = .(latent_variable, layer_index)]
-
-# Print the resulting data.table
-print(highest_weight_features_dt)
 
 # Create a separate data table for each layer ---------------------------------#
 layer_indices <- unique(highest_weight_features_dt$layer_index)
@@ -189,10 +183,7 @@ result <- merge(merged_dt, taxonomy, by.x = "layer5_numeric", by.y = "taxa_numer
 result$layer5_numeric <- NULL
 result$taxa_numeric <- NULL
 
-# Print the merged data table
-print(result)
-
-final <- result[, .(latent_variable, layer5, TaxaID, Kingdom, Phylum, Class, Order, Family, Genus, Species)][order(latent_variable)]
+final <- result[, .(latent_variable, TaxaIDabv, TaxaID, Kingdom, Phylum, Class, Order, Family, Genus, Species)][order(latent_variable)]
 
 # write to file
 fwrite(
