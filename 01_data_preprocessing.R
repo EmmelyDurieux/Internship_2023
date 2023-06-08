@@ -22,6 +22,7 @@ biom_table <- "data/emp_deblur_90bp.subset_2k.biom"
 empo3_ontology <- "Soil (non-saline)"
 abundance_threshold <- 1e-04
 prevalence_threshold <- 0.1
+workdir <- getwd()
 
 # read in EMP meta data + assign climate zones --------------------------------#
 sam <- fread(sample_meta)
