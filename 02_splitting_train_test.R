@@ -1,5 +1,7 @@
 # splitting data 
 # loading packages
+pkg <- installed.packages()[, "Package"]
+if(!('caret' %in% pkg)) {install.packages("caret")}
 library(data.table)
 library(caret)
 
