@@ -1,5 +1,9 @@
-# classification of micro-organismes
+# classification of climate zones
 # loading packages
+pkg <- installed.packages()[, "Package"]
+if(!('randomForest' %in% pkg)) {install.packages("randomForest")}
+if(!('caret' %in% pkg)) {install.packages("caret")}
+
 library(data.table)
 library(randomForest)
 library(caret)
@@ -129,24 +133,24 @@ accuracy <- mean(predictions == test_data$target)
 
 
 # getting the most informative variable for each class ------------------------#
-key_variable_df <- data.frame(ClimateZ = character(), Key_Variable = character(), 
-                              stringsAsFactors = FALSE)
+# key_variable_df <- data.frame(ClimateZ = character(), Key_Variable = character(), 
+#                              stringsAsFactors = FALSE)
 
 # Iterate over each class and get variable with max mdg 
-for (level in target_levels) {
+# for (level in target_levels) {
 
-  model <- rf_models[[level]]
+#  model <- rf_models[[level]]
   
-  mdg <- model$importance[, "MeanDecreaseGini"]
+#  mdg <- model$importance[, "MeanDecreaseGini"]
   
-  max_index <- which.max(mdg)
+#  max_index <- which.max(mdg)
   
-  key_variable <- colnames(train_data[, -9])[max_index]
-  key_variable_df <- rbind(key_variable_df, data.frame(ClimateZ = level, Key_Variable = key_variable, stringsAsFactors = FALSE))
-}
+#  key_variable <- colnames(train_data[, -9])[max_index]
+#  key_variable_df <- rbind(key_variable_df, data.frame(ClimateZ = level, Key_Variable = key_variable, stringsAsFactors = FALSE))
+#}
 
 # Print the dataframe with the key features for each class
-print(key_variable_df)
+#print(key_variable_df)
 
 
 
@@ -179,6 +183,7 @@ print(key_variable_df)
 
 # assigning key taxa to climate zones based on key variable -------------------#
 res <- merge(key_variable_df, taxa, by.x = "Key_Variable", by.y = "latent_variable", all.x = TRUE)
+res <- res[, .(Key_Variable, ClimateZ , TaxaIDabv, Phylum) ]
 
 # write to file
 fwrite(
