@@ -26,16 +26,17 @@ This script:
 - processes the BIOM files: obtains abundance counts for each taxa 
 - processes the sample metadata files: assigns climate zone to each sample
 - selects only samples that belong to "Soil (non-saline)" empo_3 ontology
-- filters data on sample/climate representation and taxa prevalence
+- filters data on sample/climate representation and taxa prevalence :
+-       data filter threshold:
+            - relative abundance of taxa > 0.01%
+            - taxa prevalence > 10% samples
+            - samples/climate zone > 3
+
 
 Packages:
 - rbiom : to process biom files
 - kgc : to assign Köppen-Geiger climate zone to each sample
 
-data filter threshold:
-- relative abundance of taxa > 0.01%
-- taxa prevalence > 10% samples
-- samples/climate zone > 3
 
 ### output
 - relative abudance table
