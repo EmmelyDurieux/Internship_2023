@@ -27,7 +27,7 @@ This script:
 - processes the sample metadata files: assigns climate zone to each sample
 - selects only samples that belong to "Soil (non-saline)" empo_3 ontology
 - filters data on sample/climate representation and taxa prevalence :
-      data filter threshold:
+      - data filter threshold:
             - relative abundance of taxa > 0.01%
             - taxa prevalence > 10% samples
             - samples/climate zone > 3
@@ -39,10 +39,10 @@ Packages:
 
 
 ### output
-- relative abudance table
-- absolute abundace table
-- taxonomy table
-- sample meta data
+- rel-abudance-table.Soil (non-saline).txt
+- abundace-table.Soil (non-saline).txt
+- taxonomy-table.Soil (non-saline).txt
+- sample-metadata.Soil (non-saline).txt
 
 ## 02_splitting_train_test.R
 This script:
@@ -80,3 +80,6 @@ Packages:
 
 ### output
 - taxa-climatezone.txt
+
+### test directory
+This directory contains the script for a 6-layer autoencoder and a way to extract the top 5 variables of 16 latent variables, and contains a script that tries different visualization techniques on the obtained data and compares it to results obtained by a co-occurence network based approach. This code isn't finished, that's why it's put in a separate directory.
