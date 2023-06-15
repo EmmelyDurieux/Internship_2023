@@ -1,6 +1,6 @@
 # Autoencoder-based identification of key microorganisms within climate zones
 
-This repository contains the code developed during my internship in 2023 at INAB, Thessaloniki. The main objective of the internship was to investigate and identify key microorganisms in Köppen-Geiger defined climate zones. The analysis relied on publicly available data from the Earth Microbiome Project, specifically utilizing the BIOM tables and sample metadata files.
+This repository contains the code developed during my internship in 2023 at INAB, Thessaloniki. The main objective of the internship was to investigate and identify key microorganisms in Köppen-Geiger defined climate zones. The analysis relied on publicly available data from the Earth Microbiome Project (https://earthmicrobiome.org/), specifically utilizing the BIOM tables and sample metadata files.
 
 The overarching approach of the project involved the implementation of an autoencoder to reduce the dimensionality of the input features, generating a compressed representation known as the latent space. This latent space was then utilized as input for a random forest classifier, allowing the identification of significant latent variables associated with each climate zone. By examining the weights within the autoencoder, it was possible to pinpoint the most informative features contributing to the composition of the latent variable, thereby establishing a connection between these features and the respective climate zone.
 
@@ -19,7 +19,7 @@ The following R packages are used in the workflow:
 I recommend installing rbiom, tensorflow and keras before running the scripts. 
 - rbiom: https://cmmr.github.io/rbiom/index.html 
 - tensorflow and keras: https://tensorflow.rstudio.com/install/index.html 
-note: I had some troubles installing tensorflow and keras, I put my code that fixed my problems in the unnumbered script "installation-Tensorflow-Keras.R"
+- note: I had some troubles installing tensorflow and keras, I put my code that fixed my problems in the unnumbered script "installation-Tensorflow-Keras.R"
 
 ## 01_data_preprocessing.R
 This script:
@@ -27,7 +27,7 @@ This script:
 - processes the sample metadata files: assigns climate zone to each sample
 - selects only samples that belong to "Soil (non-saline)" empo_3 ontology
 - filters data on sample/climate representation and taxa prevalence :
--       data filter threshold:
+      data filter threshold:
             - relative abundance of taxa > 0.01%
             - taxa prevalence > 10% samples
             - samples/climate zone > 3
