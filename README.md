@@ -31,22 +31,23 @@ This script:
 - processes the sample metadata files: assigns climate zone to each sample
 - selects only samples that belong to "Soil (non-saline)" empo_3 ontology
 - filters data on sample/climate representation and taxa prevalence :
-      - data filter threshold:
+-  data filter threshold:
             - relative abundance of taxa > 0.01%
             - taxa prevalence > 10% samples
             - samples/climate zone > 3
-
+- selects taxa that belong to bacterial kingdom
+- after filtering the information from each input file, the results are saved in .txt files
 
 Packages:
 - rbiom : to process biom files
 - kgc : to assign Köppen-Geiger climate zone to each sample
-
 
 ### output
 - rel-abudance-table.Soil (non-saline).txt
 - abundace-table.Soil (non-saline).txt
 - taxonomy-table.Soil (non-saline).txt
 - sample-metadata.Soil (non-saline).txt
+
 
 ## 02_splitting_train_test.R
 ### input
@@ -58,6 +59,7 @@ splits the retained relative abundance counts into a train and test set and stor
 ### output
 - train.txt
 - test.txt
+
 
 ## 03_autoencoder_model.R
 ### input
