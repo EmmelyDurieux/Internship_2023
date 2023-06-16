@@ -73,86 +73,7 @@ predictions <- apply(test_data[, -33], 1, predict_class)
 
 # Calculate the accuracy
 accuracy <- mean(predictions == test_data$target)
-
-# hyperparameter tuning ------------under construction-------------------------#
-
-# Define the hyperparameter grid
-hyperparameters <- expand.grid(
-  mtry = c(2, 4, 6, 8),         # Number of variables randomly sampled as candidates at each split
-  ntree = c(50, 100, 200, 300)    # Number of trees in the random forest
-)
-
-# Get the levels of the target variable
-target_levels <- levels(train_data$target)
-
-rf_models <- list()
-
-# Iterate over each class
-for (level in target_levels) {
-  # Create a binary target variable for the current class
-  binary_target <- ifelse(train_data$target == level, "Yes", "No")
-  binary_target <- factor(binary_target, levels = c("Yes", "No"))
-  
-  # Create the tuning grid for the current class
-  tuning_grid <- data.frame(mtry = hyperparameters$mtry)
-  
-  # Train the random forest model with hyperparameter tuning for the current class
-  model <- train(
-    x = train_data[, -33], y = binary_target, method = "rf",
-    tuneGrid = tuning_grid
-  )
-  
-  # Store the best model in the list
-  rf_models[[level]] <- model$finalModel
-
-}
-
-# Function to predict the class for a single observation using the models
-predict_class <- function(observation) {
-  class_probs <- rep(0, length(target_levels))
-  
-  # Iterate over each class
-  for (i in 1:length(target_levels)) {
-
-    model <- rf_models[[target_levels[i]]]
-    
-    class_probs[i] <- predict(model, newdata = observation, type = "prob")[,1]
-  }
-  
-  # Determine the class with the highest probability
-  predicted_class <- target_levels[which.max(class_probs)]
-  
-  return(predicted_class)
-}
-
-# Predict the classes for the test data
-predictions <- apply(test_data[, -33], 1, predict_class)
-
-# Calculate the accuracy
-accuracy <- mean(predictions == test_data$target)
-
-
-# getting the most informative variable for each class ------------------------#
-# key_variable_df <- data.frame(ClimateZ = character(), Key_Variable = character(), 
-#                              stringsAsFactors = FALSE)
-
-# Iterate over each class and get variable with max mdg 
-# for (level in target_levels) {
-
-#  model <- rf_models[[level]]
-  
-#  mdg <- model$importance[, "MeanDecreaseGini"]
-  
-#  max_index <- which.max(mdg)
-  
-#  key_variable <- colnames(train_data[, -9])[max_index]
-#  key_variable_df <- rbind(key_variable_df, data.frame(ClimateZ = level, Key_Variable = key_variable, stringsAsFactors = FALSE))
-#}
-
-# Print the dataframe with the key features for each class
-#print(key_variable_df)
-
-
+print(accuracy)
 
 # Iterate over each class and get top 2 variables with highest mdg ------------#
 
@@ -183,7 +104,6 @@ print(key_variable_df)
 
 # assigning key taxa to climate zones based on key variable -------------------#
 res <- merge(key_variable_df, taxa, by.x = "Key_Variable", by.y = "latent_variable", all.x = TRUE)
-res <- res[, .(Key_Variable, ClimateZ , TaxaIDabv, Phylum) ]
 
 # write to file
 fwrite(
