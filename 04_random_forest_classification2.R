@@ -9,8 +9,8 @@ library(randomForest)
 library(caret)
 
 # files and variables ---------------------------------------------------------#
-latentSpace <- "latent-space_10k-1layer.txt"
-sample_meta <- "sample-metadata_10k.Soil (non-saline).txt"
+latentSpace <- "latent-space.txt"
+sample_meta <- "sample-metadata.Soil (non-saline).txt"
 ls_taxa <- "taxa-latent-variable.txt"
 
 # read in files ---------------------------------------------------------------#
