@@ -8,10 +8,10 @@ library(data.table)
 library(tfruns)
 
 # files and variables ---------------------------------------------------------#
-ESV_rel_count <- "rel-abundance-table_10k.Soil (non-saline).txt"
-taxon <- "taxonomy-table_10k.Soil (non-saline).txt"
-train_set <- "train_10k.txt"
-test_set <- "test_10k.txt"
+ESV_rel_count <- "rel-abundance-table.Soil (non-saline).txt"
+taxon <- "taxonomy-table.Soil (non-saline).txt"
+train_set <- "train.txt"
+test_set <- "test.txt"
 
 # reading in data -------------------------------------------------------------#
 # full dataset
@@ -30,7 +30,7 @@ x_test <- fread(test_set)
 x_train <- as.matrix(x_train)[,-1] %>% apply(x_train, MARGIN = c(1,2), FUN = as.numeric)
 x_test <- as.matrix(x_test)[,-1] %>% apply(x_test, MARGIN = c(1,2), FUN = as.numeric)
 
-# data augmentation: resampling of train set ----------------------------------#
+# data augmentation: resampling of train set (if needed)------------------------#
 #num_resamples <- 200
 #resampled_indices <- sample(nrow(x_train), num_resamples, replace = TRUE)
 #resampled_data <- x_train[resampled_indices, ]
@@ -53,13 +53,13 @@ FLAGS <- flags(
   flag_string("activation2", "softmax")
 )
 
-# Define the encoder part of your autoencoder using  Sequential model
+# Define the encoder 
 encoder <- keras_model_sequential() %>%
   layer_dense(units = FLAGS$units1, activation = FLAGS$activation1, input_shape = input_shape) %>%
   layer_dense(units = FLAGS$units2, activation = FLAGS$activation1) %>%
   layer_dense(units = FLAGS$latent, activation = FLAGS$activation1)
 
-# Define the decoder part of your autoencoder using a Sequential model
+# Define the decoder
 decoder <- keras_model_sequential() %>%
   layer_dense(units = FLAGS$units2, activation = FLAGS$activation1, input_shape = c(FLAGS$latent))%>%
   layer_dense(units = FLAGS$units1, activation = FLAGS$activation1) %>%
@@ -79,7 +79,7 @@ autoencoder %>% compile(optimizer = optimizer,
                         loss = "binary_crossentropy",
                         metrics = c('accuracy', 'mse'))
 
-# Train the autoencoder model on your data
+# Train the autoencoder model 
 num_train_iterations <- 5
 
 for (i in 1:num_train_iterations) {
@@ -158,7 +158,7 @@ layer_list <- lapply(layer_indices, function(index) {
 names(layer_list) <- paste0("layer", layer_indices)
 list2env(layer_list, envir = .GlobalEnv)
 
-#---------------------------(under construction )------------------------------#
+# extract top 5 variables -----------------------------------------------------#
 # First + second layer
 merged_dt <- merge(layer1, layer3, by.x = "feature_index", by.y = "latent_variable", allow.cartesian = TRUE)
 merged_dt <- merged_dt[order(-weight.y)]
