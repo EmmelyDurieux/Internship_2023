@@ -17,8 +17,8 @@ library(stringr)
 # metadata: https://github.com/biocore/emp/tree/master/data/mapping-files
 # biomtable: (https://github.com/biocore/emp/tree/master/data/biom-tables)
 
-sample_meta <- "data/emp_qiime_mapping_subset_2k.tsv"
-biom_table <- "data/emp_deblur_90bp.subset_2k.biom"
+sample_meta <- "data/emp_qiime_mapping_subset_10k.tsv"
+biom_table <- "data/emp_deblur_90bp.subset_10k.biom"
 empo3_ontology <- "Soil (non-saline)"
 abundance_threshold <- 1e-04
 prevalence_threshold <- 0.1
