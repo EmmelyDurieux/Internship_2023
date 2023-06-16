@@ -22,6 +22,10 @@ I recommend installing rbiom, tensorflow and keras before running the scripts.
 - note: I had some troubles installing tensorflow and keras, I put my code that fixed my problems in the unnumbered script "installation-Tensorflow-Keras.R"
 
 ## 01_data_preprocessing.R
+### input
+- biom table
+- sample mapping files
+
 This script:
 - processes the BIOM files: obtains abundance counts for each taxa 
 - processes the sample metadata files: assigns climate zone to each sample
@@ -45,6 +49,9 @@ Packages:
 - sample-metadata.Soil (non-saline).txt
 
 ## 02_splitting_train_test.R
+### input
+- filtered relative abundance table
+
 This script:
 splits the retained relative abundance counts into a train and test set and stores it in a .txt file
 
@@ -53,6 +60,11 @@ splits the retained relative abundance counts into a train and test set and stor
 - test.txt
 
 ## 03_autoencoder_model.R
+### input
+- train and test subset of filtered relative abundances
+- complete data set of filtered relative abundances
+- filtered taxonomy table (obtained from biom table)
+
 This script:
 - trains a 1 hidden layer autoencoder with the training data
 - stores the latent space in a .txt file
@@ -69,6 +81,11 @@ note: in this script you will see that I load tensorflow before and after I acti
 - taxa-latent-variable.txt : each latent variable with their top 5 most weighted features
 
 ## 04_random_forest_classification2.R
+### input
+- latent space
+- filtered sample meta data
+- dataset of latent variable with corresponding taxa
+
 This script:
 - trains a random forest classification model for each climate zone separatly on a subset of the latent space data.
 - extracts key latent variables for each climate zone by selecting variables with highest mean decrease in gini impurity
