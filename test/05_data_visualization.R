@@ -25,7 +25,7 @@ sam <- fread(sample_meta)
 taxa <- fread(clim_taxa)
 control <- fread(control)
 
-# Merging and filtering data --------------------------------------------------#
+# Merging and filtering abundance count data ----------------------------------#
 # filtering counts for the key taxa
 
 filterAndTransformCounts <- function(counts, taxa) {
@@ -39,13 +39,13 @@ filterAndTransformCounts <- function(counts, taxa) {
   colnames(filtered_counts) <- filtered_counts[1, ]
   filtered_counts <- filtered_counts[-1, ]
   
-  # Convert to data frame and set row names
+  # Convert to data frame and set row names as a separate column
   filtered_counts <- as.data.frame(filtered_counts)
-  row_names <- row.names(filtered_counts)
-  rownames(filtered_counts) <- row_names
   
-  # Convert columns to numeric
-  filtered_counts <- as.data.frame(lapply(filtered_counts, as.numeric))
+  # Convert columns to numeric (excluding non-numeric columns)
+  filtered_counts[, 1:lenght(filtered_counts)] <- lapply(filtered_counts[, 1:length(filtered_counts)], as.numeric)
+  filtered_counts$RowID <- row.names(filtered_counts)
+  row.names(filtered_counts) <- NULL
   
   return(filtered_counts)
 }
@@ -53,9 +53,7 @@ filterAndTransformCounts <- function(counts, taxa) {
 filtered_counts <- filterAndTransformCounts(counts, taxa)
 print(filtered_counts)
 
-
 # adding climate zones
-filtered_counts$RowID <- row.names(filtered_counts)
 merged_data <- merge(filtered_counts, sam[, c("SampleID", "ClimateZ")], by.x = "RowID", by.y = "SampleID")
 merged_data$RowID <- NULL
 
@@ -109,13 +107,11 @@ label_colors <- rainbow(length(all_labels))
 # Af
 pie(my_result_freq$Af$Freq, 
     labels = my_result_freq$Af$x,
-    main = "autoencoder",
-    col = label_colors)
+    main = "autoencoder")
 
 pie(nikos_result_freq$Af$Freq, 
     labels = nikos_result_freq$Af$x,
-    main = "co-occurence network",
-    col = label_colors)
+    main = "co-occurence network")
 
 # Am
 
@@ -273,13 +269,13 @@ plot_avg_freq_diff
 # weighted difference score
 # Calculate weighted average difference score
 weight_jaccard <- 0.6  # Weight for Jaccard similarity
-weight_avg_diff <- 0.4  # Weight for average frequency difference
+weight_avg_sim <- 0.4  # Weight for average frequency difference
 
-overall_diff_score <- (weight_jaccard * mean(similarity_data$JaccardSimilarity)) +
-  (weight_avg_diff * mean(similarity_data$AvgFreqDiffPercent/100))
+overall_sim_score <- (weight_jaccard * mean(similarity_data$JaccardSimilarity)) +
+  (weight_avg_sim * mean(similarity_data$AvgFreqSimPercent))
 
 # Print the overall difference score
-print(overall_diff_score)
+print(overall_sim_score)
 
 # percentage of overlap unique phylum -----------------------------------------#
 # Initialize variables
@@ -426,7 +422,7 @@ default_color <- "gray"
 taxa_colors <- ifelse(is.na(matching_phylum), default_color, phylum_colors)
 
 par(las = 2)
-boxplot(zone_list$Af[,-29], 
+boxplot(zone_list$Af[,-35], 
         main = "Boxplot - Af Climate Zone", 
         ylab = "Abs abundance count",
         col = taxa_colors,
@@ -450,7 +446,7 @@ getSelectedPhylum <- function(climate_zone) {
   zone_df <- zone_list[[climate_zone]]
   
   # calculate colsum and order
-  column_sums <- colSums(zone_df[, -29])
+  column_sums <- colSums(zone_df[, -length(zone_list[[climate_zone]])])
   
   lowest_sum_indices <- order(column_sums)[1:5]
   
