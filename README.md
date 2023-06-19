@@ -78,6 +78,8 @@ Packages:
 
 note: in this script you will see that I load tensorflow before and after I activate and use my virtualenv. This is on purpose, if I don't do it this way my virtualenv and/or tensorflow simply don't want to work. This is not a universal problem, so when running this script on another system, it's possible that this won't be necessary. If there are other problems working with virtualenv it can help to restart R and clean the environment.
 
+note 2: There is a block of code put in comments for data augmentation (data resampling), this should only be used if there are less than 200 samples. If there are less than 200 samples the accuracy of the autoencoder is significantly lower. 
+
 ### output
 - latent-space.txt : latent space variable representation (32) for each sample
 - taxa-latent-variable.txt : each latent variable with their top 5 most weighted features
