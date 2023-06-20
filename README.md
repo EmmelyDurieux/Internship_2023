@@ -23,8 +23,8 @@ I recommend installing rbiom, tensorflow and keras before running the scripts.
 
 ## 01_data_preprocessing.R
 ### input
-- biom table
-- sample mapping files
+- biom table (.biom file)
+- sample mapping files (.tsv file)
 
 This script:
 - processes the BIOM files: obtains abundance counts for each taxa 
@@ -51,7 +51,7 @@ Packages:
 
 ## 02_splitting_train_test.R
 ### input
-- filtered relative abundance table
+- filtered relative abundance table (.txt file)
 
 This script:
 splits the retained relative abundance counts into a train and test set and stores it in a .txt file
@@ -63,9 +63,9 @@ splits the retained relative abundance counts into a train and test set and stor
 
 ## 03_autoencoder_model.R
 ### input
-- train and test subset of filtered relative abundances
-- complete data set of filtered relative abundances
-- filtered taxonomy table (obtained from biom table)
+- train and test subset of filtered relative abundances (.txt file)
+- complete data set of filtered relative abundances (.txt file)
+- filtered taxonomy table (obtained from biom table) (.txt file)
 
 This script:
 - trains a 1 hidden layer autoencoder with the training data
@@ -86,9 +86,9 @@ note 2: There is a block of code put in comments for data augmentation (data res
 
 ## 04_random_forest_classification2.R
 ### input
-- latent space
-- filtered sample meta data
-- dataset of latent variable with corresponding taxa
+- latent space (.txt file)
+- filtered sample meta data (.txt file)
+- dataset of latent variable with corresponding taxa (.txt file)
 
 This script:
 - trains a random forest classification model for each climate zone separatly on a subset of the latent space data.
